@@ -5,6 +5,8 @@ A simple Next.js app to provide statistics and insights on confectionary store d
 
 We recommend using the VS Code Dev Containers bundled with this repository.
 
+Edit the `.env.local` file (automatically copied from `.env.local.example` when using a dev container) and add in the requried secrets/IDs.
+
 Then:
 
 ```bash
