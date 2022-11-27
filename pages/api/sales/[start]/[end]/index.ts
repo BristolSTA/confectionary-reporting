@@ -20,6 +20,8 @@ interface SalesSummary {
   "profit": number,
   "net_recieved": number,
   "orders": OrderSummary[],
+  "total_collected": number,
+  "fees": number,
 }
 
 
@@ -139,11 +141,15 @@ export default async function handler(
       "net_recieved": totalTendered - totalSquareFees,
       "profit": itemSummaries.reduce((a, b) => a + (b.profit ?? 0), 0),
       "items": itemSummaries,
+      "total_collected": totalTendered,
+      "fees": totalSquareFees
     }
   })
 
   res.status(200).json({
     "orders": orderSummaries,
+    "total_collected": orderSummaries.reduce((a, b) => a + b.total_collected, 0),
+    "fees": orderSummaries.reduce((a, b) => a + b.fees, 0),
     "profit": orderSummaries.reduce((a, b) => a + b.profit, 0),
     "net_recieved": orderSummaries.reduce((a, b) => a + b.net_recieved, 0)
   })
