@@ -1,6 +1,6 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { Client, Environment, ApiError } from "square";
+import { Client, Environment } from "square";
 import Airtable from "airtable"
 
 interface OrderItemSummary {
@@ -11,17 +11,22 @@ interface OrderItemSummary {
 }
 
 interface OrderSummary {
+  "id": string | undefined,
   "net_recieved": number,
   "items": OrderItemSummary[]
   "profit": number
 }
 
 interface SalesSummary {
-  "profit": number,
-  "net_recieved": number,
+  "start_date": string,
+  "end_date": string,
+  "total_collected": number, // Sum of amounts charged to customers
+  "net_recieved": number, // Sum of amounts actually paid to us (i.e. with fees removed)
+  "net_recieved_in_bank": number, // Sum of amounts paid to us by Square into bank account
+  "profit": number, // Sum of profit actually made from sales on transactions (accounting for square fees)
+  "fees": number, // Sum of fees taken by square
+  "loss_from_orders": number, // Sum of orders with negative profits
   "orders": OrderSummary[],
-  "total_collected": number,
-  "fees": number,
 }
 
 
@@ -48,6 +53,8 @@ export default async function handler(
     throw new Error("Invalid start/end time")
   }
 
+  const startDateString = new Date(start).toISOString();
+  const endDateString = new Date(end).toISOString();
   // Get orders at the location within the timeframe given
   const squareOrders = await client.ordersApi.searchOrders({
     locationIds: [process.env.SQUARE_LOCATION_ID],
@@ -55,8 +62,8 @@ export default async function handler(
       filter: {
         dateTimeFilter: {
           createdAt: {
-            startAt: new Date(start).toISOString(),
-            endAt: new Date(end).toISOString()
+            startAt: startDateString,
+            endAt: endDateString
           }
         }
       }
@@ -138,19 +145,28 @@ export default async function handler(
     }) || []
 
     return {
+      "id": order.id,
       "net_recieved": totalTendered - totalSquareFees,
       "profit": itemSummaries.reduce((a, b) => a + (b.profit ?? 0), 0),
       "items": itemSummaries,
       "total_collected": totalTendered,
-      "fees": totalSquareFees
+      "fees": totalSquareFees,
+      "tenders": order.tenders?.map(tender => tender.type)
     }
   })
 
+  const inBankOrders = orderSummaries.filter(order => order.tenders?.includes("CARD"))
+  const lossOrders = orderSummaries.filter(order => order.profit < 0)
+
   res.status(200).json({
-    "orders": orderSummaries,
+    "start_date": startDateString,
+    "end_date": endDateString,
     "total_collected": orderSummaries.reduce((a, b) => a + b.total_collected, 0),
+    "net_recieved": orderSummaries.reduce((a, b) => a + b.net_recieved, 0),
+    "net_recieved_in_bank": inBankOrders.reduce((a, b) => a + b.net_recieved, 0),
     "fees": orderSummaries.reduce((a, b) => a + b.fees, 0),
     "profit": orderSummaries.reduce((a, b) => a + b.profit, 0),
-    "net_recieved": orderSummaries.reduce((a, b) => a + b.net_recieved, 0)
+    "loss_from_orders": lossOrders.reduce((a, b) => a + b.profit, 0),
+    "orders": orderSummaries,
   })
 }
