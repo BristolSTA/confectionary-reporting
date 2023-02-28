@@ -29,6 +29,9 @@ interface SalesSummary {
   "orders": OrderSummary[],
 }
 
+// Set a JSON seralizer for BigInt types
+// @ts-ignore
+BigInt.prototype.toJSON = function () { return Number(this) };
 
 export default async function handler(
   req: NextApiRequest,
@@ -73,14 +76,6 @@ export default async function handler(
   if (!squareOrders.result.orders) {
     throw new Error("No orders in period")
   }
-
-  // Set a JSON seralizer for BigInt types
-  // eslint-disable-next-line @typescript-eslint/no-redeclare
-  interface BigInt {
-      /** Convert to BigInt to string form in JSON.stringify */
-      toJSON: () => number;
-  }
-  BigInt.prototype.toJSON = function () { return Number(this) };
 
   // Get item data from airtable
   const airtable = new Airtable()
