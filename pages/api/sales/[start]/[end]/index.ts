@@ -75,7 +75,12 @@ export default async function handler(
   }
 
   // Set a JSON seralizer for BigInt types
-  BigInt.prototype.toJSON = function () { return Number(this) }
+  // eslint-disable-next-line @typescript-eslint/no-redeclare
+  interface BigInt {
+      /** Convert to BigInt to string form in JSON.stringify */
+      toJSON: () => number;
+  }
+  BigInt.prototype.toJSON = function () { return Number(this) };
 
   // Get item data from airtable
   const airtable = new Airtable()
