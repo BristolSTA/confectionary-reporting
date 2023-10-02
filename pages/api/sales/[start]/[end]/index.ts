@@ -80,11 +80,20 @@ export default async function handler(
   // Get item data from airtable
   const airtable = new Airtable()
   const results = await airtable.base(process.env.AIRTABLE_BASE_ID ?? '').table(process.env.AIRTABLE_ITEMS_TABLE_ID ?? '').select({ filterByFormula: "{Supplier}='Booker'" }).all()
+  try{
   const airtableItemDetails = results.map(airtableItem => {
     return {
       "sku": String(airtableItem.get("Square Catalog ID")),
       "unit_cost_inc_vat": Number(airtableItem.get("Unit Price")) ?? 0,
     }
+  }
+                                          } catch{
+    const airtableItemDetails = results.map(airtableItem => {
+    return {
+      "sku": String(airtableItem.get("Square Catalog ID")),
+      "unit_cost_inc_vat": 0;
+    }
+  }
   })
 
   // Get item data from square
